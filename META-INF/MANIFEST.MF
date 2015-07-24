@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Require-Bundle: com.dynatrace.diagnostics.sdk
+Bundle-Vendor: dynaTrace
+Bundle-ClassPath: .,lib/commons-codec-1.6.jar,lib/commons-logging-1.1.
+ 3.jar,lib/httpclient-4.3.4.jar,lib/httpcore-4.3.2.jar,lib/java-json.j
+ ar
+Bundle-Version: 1.0.2
+Bundle-Name: Service Now Alert Plugin
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: com.dynaTrace.diagnostics.ServiceNow;singleton:=t
+ rue
+
