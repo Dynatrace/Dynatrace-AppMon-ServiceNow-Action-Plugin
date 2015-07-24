@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<!-- plugin.xml file written by dynaTrace Client 5.6.0 -->
+<plugin>
+  <extension point="com.dynatrace.diagnostics.pdk.pluginconfig" id="com.dynaTrace.diagnostics.ServiceNow" name="Service Now Alert Plugin">
+    <information>
+      <category value="" />
+      <displayname value="Service Now Alert Plugin" />
+      <description value="This action plugin will create a new ticket for ServiceNow" />
+      <supportlevel value="unsupported" />
+    </information>
+    <configuration>
+      <property key="domain" label="Domain" type="url" description="domain name within servicenow" default="https://bedemochannel.service-now.com" />
+      <property key="user" label="User" type="string" description="User name to use to connect with servicenow" default="" multiline="false" />
+      <property key="password" label="Password" type="password" description="Password for the user" default="" />
+      <property key="assignTo" label="Assign To" type="string" description="Name of the person to which the ticket will be assigned to." default="" multiline="false" />
+      <property key="impact" label="Impact" type="list" description="My property description ..." default="3 - Low">
+        <list>
+          <item value="1 - High" />
+          <item value="2 - Medium" />
+          <item value="3 - Low" />
+        </list>
+      </property>
+      <property key="urgency" label="Urgency" type="list" description="My property description ..." default="3 - Low">
+        <list>
+          <item value="1 - High" />
+          <item value="2 - Medium" />
+          <item value="3 - Low" />
+        </list>
+      </property>
+      <property key="priority" label="Priority" type="list" description="My property description ..." default="3 - Moderate">
+        <list>
+          <item value="1 - Critical" />
+          <item value="2 - High" />
+          <item value="3 - Moderate" />
+          <item value="4 - Low" />
+          <item value="5 - Planning" />
+        </list>
+      </property>
+      <property key="configurationItem" label="Configuration Item" type="string" description="My property description ..." default="" multiline="false" />
+      <property key="contactType" label="Contact Type" type="string" description="My property description ..." default="Web-Service" multiline="false" />
+      <property key="category" label="Category" type="list" description="My property description ..." default="Software">
+        <list>
+          <item value="Request" />
+          <item value="Inquiry / Help" />
+          <item value="Software" />
+          <item value="Hardware" />
+          <item value="Network" />
+          <item value="Database" />
+          <item value="Work Order" />
+        </list>
+      </property>
+      <property key="subcategory" label="Subcategory" type="string" description="My property description ..." default="" multiline="false" />
+      <property key="assignmentGroup" label="Assignment Group" type="string" description="My property description ..." default="" multiline="false" />
+      <property key="company" label="Company" type="string" description="My property description ..." default="" multiline="false" />
+    </configuration>
+  </extension>
+  <extension point="com.dynatrace.diagnostics.pdk.action" id="com.dynaTrace.diagnostics.ServiceNow.action" name="ServiceNow Action Plugin">
+    <plugin configid="com.dynaTrace.diagnostics.ServiceNow" class="com.dynatrace.plugin.ServiceNowAction" />
+  </extension>
+</plugin>
+
