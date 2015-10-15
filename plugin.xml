@@ -6,7 +6,7 @@
     <information>
       <category value="" />
       <displayname value="Service Now Alert Plugin" />
-      <description value="This action plugin will create a new ticket for ServiceNow" />
+      <description value="Changed Category from List to Text Input to allow for custom categories." />
       <supportlevel value="unsupported" />
     </information>
     <configuration>
@@ -38,18 +38,8 @@
         </list>
       </property>
       <property key="configurationItem" label="Configuration Item" type="string" description="My property description ..." default="" multiline="false" />
-      <property key="contactType" label="Contact Type" type="string" description="My property description ..." default="Web-Service" multiline="false" />
-      <property key="category" label="Category" type="list" description="My property description ..." default="Software">
-        <list>
-          <item value="Request" />
-          <item value="Inquiry / Help" />
-          <item value="Software" />
-          <item value="Hardware" />
-          <item value="Network" />
-          <item value="Database" />
-          <item value="Work Order" />
-        </list>
-      </property>
+      <property key="contactType" label="Contact Type" type="string" description="My property description ..." default="" multiline="false" />
+      <property key="category" label="Category" type="string" description="My property description ..." default="" multiline="false" />
       <property key="subcategory" label="Subcategory" type="string" description="My property description ..." default="" multiline="false" />
       <property key="assignmentGroup" label="Assignment Group" type="string" description="My property description ..." default="" multiline="false" />
       <property key="company" label="Company" type="string" description="My property description ..." default="" multiline="false" />
@@ -59,4 +49,3 @@
     <plugin configid="com.dynaTrace.diagnostics.ServiceNow" class="com.dynatrace.plugin.ServiceNowAction" />
   </extension>
 </plugin>
-
