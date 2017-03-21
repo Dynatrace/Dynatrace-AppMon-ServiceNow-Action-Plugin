@@ -11,8 +11,35 @@
     </information>
     <configuration>
       <property key="domain" label="Domain" type="url" description="domain name within servicenow" default="https://bedemochannel.service-now.com" />
+      <property key="domainAppend" label="Domain Append" type="string" description="This string is appended at the end of the Domain. By default it is set to &#xA;&quot;/api/now/table/incident&quot;. Hence the complete url looks like this with the default append value:&#xA;http:/&lt;domain&gt;/api/now/table/incident" default="/api/now/table/incident" multiline="false" />
       <property key="user" label="User" type="string" description="User name to use to connect with servicenow" default="" multiline="false" />
       <property key="password" label="Password" type="password" description="Password for the user" default="" />
+      <property key="useProxy" label="Use Proxy?" type="boolean" description="My property description ..." default="false" />
+      <property key="proxyHost" label="Proxy Host" type="string" description="Proxy host name" default="" multiline="false">
+        <visibility>
+          <rule key="useProxy" value="true" />
+        </visibility>
+      </property>
+      <property key="proxyPort" label="Proxy Port" type="string" description="Port for the proxy&#x9;" default="" multiline="false">
+        <visibility>
+          <rule key="useProxy" value="true" />
+        </visibility>
+      </property>
+      <property key="proxyAuthenticationRequired" label="Proxy Authentication Required?" type="boolean" description="My property description ..." default="false">
+        <visibility>
+          <rule key="useProxy" value="true" />
+        </visibility>
+      </property>
+      <property key="proxyUserName" label="Proxy User Name" type="string" description="My property description ..." default="" multiline="false">
+        <visibility>
+          <rule key="proxyAuthenticationRequired" value="true" />
+        </visibility>
+      </property>
+      <property key="proxyPassword" label="Proxy Password" type="password" description="My property description ..." default="">
+        <visibility>
+          <rule key="proxyAuthenticationRequired" value="true" />
+        </visibility>
+      </property>
       <property key="assignTo" label="Assign To" type="string" description="Name of the person to which the ticket will be assigned to." default="" multiline="false" />
       <property key="impact" label="Impact" type="list" description="My property description ..." default="3 - Low">
         <list>

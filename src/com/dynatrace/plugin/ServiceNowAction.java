@@ -8,9 +8,8 @@
 package com.dynatrace.plugin;
 
 import com.dynatrace.diagnostics.pdk.*;
-import com.dynatrace.diagnostics.pdk.Incident.Severity;
 import com.dynatrace.diagnostics.pdk.Violation.TriggerValue;
-import com.dynatrace.diagnostics.pdk.AgentSource;
+import com.dynatrace.plugin.utils.HelperUtils;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -26,9 +25,9 @@ import java.util.logging.Logger;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
 import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -37,10 +36,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.ProxyAuthenticationStrategy;
 import org.apache.http.message.BasicHeader;
-import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HTTP;
-import org.apache.http.protocol.HttpContext;
 import org.json.JSONObject;
 
 public class ServiceNowAction implements Action {
@@ -56,6 +54,12 @@ public class ServiceNowAction implements Action {
 	
 	private final static String PARAM_USER = "user";
 	private final static String PARAM_PASSWORD = "password";
+	private final static String PARAM_USE_PROXY="useProxy"; 
+	private final static String PARAM_PROXY_HOST="proxyHost"; 
+	private final static String PARAM_PROXY_PORT="proxyPort"; 
+	private final static String PARAM_PROXY_AUTHENTICATION_REQD="proxyAuthenticationRequired"; 
+	private final static String PARAM_PROXY_USERNAME="proxyUserName"; 
+	private final static String PARAM_PROXY_PASSWORD="proxyPassword"; 
 	private final static String PARAM_DOMAIN = "domain";
 	private final static String PARAM_ASSIGN_TO = "assignTo";
 	private final static String PARAM_CONFIGURATION_ITEM = "configurationItem";
@@ -67,9 +71,9 @@ public class ServiceNowAction implements Action {
 	private final static String PARAM_IMPACT = "impact";
 	private final static String PARAM_URGENCY = "urgency";
 	private final static String PARAM_PRIORITY = "priority";
+	private final static String PARAM_DOMAIN_APPEND = "domainAppend";
 	
-	
-	private final static String DOMAIN_APPEND = "/api/now/table/incident";
+	private String domainAppend;
 	private String url;
 	private String authString;
 	private String configurationItem;
@@ -81,7 +85,13 @@ public class ServiceNowAction implements Action {
 	private String impact;
 	private String urgency;
 	private String priority;
-
+	private boolean useProxy;
+	private boolean proxyAuthenticationRequired;
+	private String proxyHost;
+	private int proxyPort;
+	private String proxyUserName;
+	private String proxyPassword;
+	
 	/**
 	 * Initializes the Action Plugin. This method is always 
 	 * called before <tt>execute</tt>.
@@ -112,7 +122,19 @@ public class ServiceNowAction implements Action {
 		impact = env.getConfigString(PARAM_IMPACT);
 		urgency = env.getConfigString(PARAM_URGENCY);
 		priority = env.getConfigString(PARAM_PRIORITY);
-		
+		domainAppend = env.getConfigString(PARAM_DOMAIN_APPEND);
+
+		useProxy = env.getConfigBoolean(PARAM_USE_PROXY).booleanValue();
+		if (useProxy) {
+			proxyHost = env.getConfigString(PARAM_PROXY_HOST);
+			proxyPort = env.getConfigLong(PARAM_PROXY_PORT).intValue();
+			
+			proxyAuthenticationRequired = env.getConfigBoolean(PARAM_PROXY_AUTHENTICATION_REQD).booleanValue();
+			if (proxyAuthenticationRequired) {
+				proxyUserName = env.getConfigString(PARAM_PROXY_USERNAME);
+				proxyPassword = env.getConfigPassword(PARAM_PROXY_PASSWORD);
+			}
+		}
 		impact = impact.substring(0, 1);
 		urgency = urgency.substring(0, 1);
 		priority = priority.substring(0, 1);
@@ -134,14 +156,34 @@ public class ServiceNowAction implements Action {
 			error = error + " AssignTo is not defined.";
 		}
 		
+		if (useProxy && (proxyHost == null || proxyHost.isEmpty())) {
+			error = error + " Proxy Host is required when using proxy";
+		}
+		
+		if (useProxy && proxyPort == 0) {
+			error = error + " Proxy Port is required when using proxy";
+		}
+		
+		if (proxyAuthenticationRequired && (proxyUserName == null || proxyUserName.isEmpty())) {
+			error = error + " Proxy user name is required when using proxy authentication";
+		}
+		if (proxyAuthenticationRequired && (proxyPassword == null || proxyPassword.isEmpty())) {
+			error = error + " Proxy password is required when using proxy authentication";
+		}
+
+		if (domainAppend == null || domainAppend.isEmpty()) {
+			error = error + " Domain append value cannot be empty";
+		}
+		
 		if ( error != "") {
 			return new Status(Status.StatusCode.ErrorInternalConfigurationProblem, error);
 		}
 		
 		
 		authString = buildAuthString(user, password);
- 		url = domain + DOMAIN_APPEND;
+ 		url = domain + domainAppend;
 
+ 		log.log(Level.FINER, "Setup is successful");
 		return new Status(Status.StatusCode.Success);
 	}
 
@@ -170,11 +212,24 @@ public class ServiceNowAction implements Action {
 		 // Since I don't have an account with ServiceNow, I am going to pass a dummy domain name.
 		 // I want this plugin to test successfully for me to send it to the customers. If dummy domain was found, I am returning
 		 // SUCCESS for the plugin to test.
-		 if (domain.startsWith("dummy")) {
+		 if (domain.contains("dummy")) {
 			 return new Status(Status.StatusCode.Success);
 		 }
-		 CloseableHttpClient client = HttpClientBuilder.create().build();
-
+		 HttpClientBuilder builder = HttpClientBuilder.create();
+		 if (useProxy) {
+			 HttpHost proxy = new HttpHost(proxyHost, proxyPort);
+			if (proxyAuthenticationRequired) {
+				 log.log(Level.FINER, "P-UserName=" + proxyUserName);
+				 CredentialsProvider credsProvider = new BasicCredentialsProvider();
+				 credsProvider.setCredentials(
+						 new AuthScope(proxyHost, proxyPort),
+						 new UsernamePasswordCredentials(proxyUserName, proxyPassword));
+				 builder = builder.setDefaultCredentialsProvider(credsProvider)
+						 .setProxyAuthenticationStrategy(new ProxyAuthenticationStrategy());
+			 }
+			 builder.setProxy(proxy);
+		 }
+		 CloseableHttpClient client = builder.build();
 		 Header header 	= new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 		 List<Header> headers = new ArrayList<Header>();
 		 headers.add(header);
@@ -188,7 +243,6 @@ public class ServiceNowAction implements Action {
 			 StringEntity se = new StringEntity(postBody);
 			 se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
 			 post.setEntity(se);
-			 HttpContext context = new BasicHttpContext();
 			 CloseableHttpResponse response = client.execute(post);
 			 int responseCode = response.getStatusLine().getStatusCode();
 			 if (responseCode != HttpStatus.SC_CREATED) {
@@ -210,8 +264,12 @@ public class ServiceNowAction implements Action {
 			 return new Status(Status.StatusCode.Success, (String) resultJSON.getString("number"));
 		 }
 		 catch (MalformedURLException me) {
-			 log.log(Level.SEVERE, me.getMessage());
-			 return new Status(Status.StatusCode.ErrorTargetServiceExecutionFailed, me.getMessage());
+			 log.log(Level.SEVERE, HelperUtils.getStackTraceAsString(me));
+			 return new Status(Status.StatusCode.ErrorTargetServiceExecutionFailed, HelperUtils.getExceptionAsString(me));
+		 }
+		 catch (Exception e) {
+			 log.log(Level.SEVERE, HelperUtils.getStackTraceAsString(e));
+			 return new Status(Status.StatusCode.ErrorTargetServiceExecutionFailed, HelperUtils.getExceptionAsString(e));
 		 }
 		 finally {
 			 if (client != null ) {
@@ -227,7 +285,6 @@ public class ServiceNowAction implements Action {
 	 */
 	@Override
 	public void teardown(ActionEnvironment env) throws Exception {
-		// TODO
 	}
 	
 	private String buildPostBody(ActionEnvironment env) {
@@ -247,7 +304,7 @@ public class ServiceNowAction implements Action {
 		double thresholdValue = 0;
 		String split = "";
 		String incidentRule = null;
-		Severity incidentSeverity = null;
+//		Severity incidentSeverity = null;
 		String shrtDesc = null;
 		Timestamp startTime = null;
 		for (Incident i : incidents) { 
@@ -276,16 +333,16 @@ public class ServiceNowAction implements Action {
 				} 
 			} 
 			incidentRule = i.getIncidentRule().getName(); 
-			incidentSeverity = i.getSeverity(); 
+//			incidentSeverity = i.getSeverity(); 
 		}
-		String severity="0";
+/*		String severity="0";
 		if(incidentSeverity == Incident.Severity.Informational)
 			severity = "3";
 		if(incidentSeverity == Incident.Severity.Warning)
 			severity = "2";
 		if(incidentSeverity == Incident.Severity.Error)
 			severity = "1";
-
+*/
 		String summary = "Incident:" + incidentRule +", Server: " + cmdbci + ", Measure:" + split + ", TriggeredValue:" + triggeredValue + ", ThresholdValue:" + thresholdValue + ", startTime:" + startTime + "| Error Message : " + shrtDesc;
 
 		log.log(Level.FINER, "Summary=" + summary);
